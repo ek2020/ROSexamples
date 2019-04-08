@@ -1,0 +1,154 @@
+{
+  "ROSTemplateFormatVersion": "2015-09-01",
+  "Description": "Create ECS instance running Windows Server 2016, with Chrome preinstalled",
+  "Parameters": {
+    "ImageId": {
+      "Type": "String",
+      "Description": "ECS Image",
+      "Label": "ECS Image",
+      "Default": "win2016_64_dtc_1607_en-us_40G_alibase_20181220.vhd"
+    },
+    "InstanceType": {
+      "Type": "String",
+      "Description": "ECS Instance Type",
+      "AllowedValues": [
+        "ecs.n1.medium",
+        "ecs.n1.large",
+        "ecs.n2.medium",
+        "ecs.n2.large",
+        "ecs.n4.large",
+        "ecs.n4.xlarge",
+        "ecs.mn4.large",
+        "ecs.mn4.xlarge",
+        "ecs.e4.large",
+        "ecs.cm4.xlarge",
+        "ecs.ce4.xlarge",
+        "ecs.c4.xlarge",
+        "ecs.ga1.4xlarge",
+        "ecs.ga1.8xlarge",
+        "ecs.ga1.2xlarge",
+        "ecs.gn4-c8g1.4xlarge",
+        "ecs.gn4.8xlarge",
+        "ecs.gn4.14xlarge",
+        "ecs.gn4-c8g1.2xlarge",
+        "ecs.gn4-c4g1.xlarge",
+        "ecs.gn4-c4g1.2xlarge",
+        "ecs.gn5-c4g1.2xlarge",
+        "ecs.gn5-c4g1.xlarge",
+        "ecs.gn5-c8g1.2xlarge",
+        "ecs.gn5-c8g1.4xlarge"
+      ],
+      "Label": "ECS Instance Type",
+      "Default": "ecs.n4.large"
+    },
+    "LoginPassword": {
+      "NoEcho": true,
+      "Type": "String",
+      "Description": "ECS Login Password (SAVE THIS SOMEWHERE)",
+      "AllowedPattern": "[a-zA-Z0-9-\\(\\)\\`\\~\\!@\\#\\$%\\^&\\*-+=\\|\\{\\}\\[\\]\\:\\;\\‘\\,\\.\\?\\/]*",
+      "Label": "ECS Login Password (SAVE THIS SOMEWHERE)",
+      "MinLength": 8,
+      "MaxLength": 41
+    },
+    "PublicIP": {
+      "Type": "Boolean",
+      "Description": "Allocate public IP? (check box for yes)",
+      "Label": "Allocate public IP? (check box for yes)",
+      "Default": true
+    }
+  },
+  "Resources": {
+    "vswitch": {
+      "Type": "ALIYUN::ECS::VSwitch",
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpc"
+        },
+        "ZoneId": {
+          "Fn::Select": [
+            "0",
+            {
+              "Fn::GetAZs": {
+                "Ref": "ALIYUN::Region"
+              }
+            }
+          ]
+        },
+        "CidrBlock": "192.168.0.0/16"
+      }
+    },
+    "ecs": {
+      "Type": "ALIYUN::ECS::Instance",
+      "Properties": {
+        "InstanceName": "ros_examples_windows2016_ecs",
+        "UserData": { "Fn::Base64Decode": "W3Bvd2Vyc2hlbGxdCiRQYXRoID0gJGVudjpURU1QOyAKJEluc3RhbGxlciA9ICJjaHJvbWVfaW5zdGFsbGVyLmV4ZSI7IApJbnZva2UtV2ViUmVxdWVzdCAiaHR0cDovL2RsLmdvb2dsZS5jb20vY2hyb21lL2luc3RhbGwvMzc1LjEyNi9jaHJvbWVfaW5zdGFsbGVyLmV4ZSIgLU91dEZpbGUgJFBhdGhcJEluc3RhbGxlcjsgClN0YXJ0LVByb2Nlc3MgLUZpbGVQYXRoICRQYXRoXCRJbnN0YWxsZXIgLUFyZ3MgIi9zaWxlbnQgL2luc3RhbGwiIC1WZXJiIFJ1bkFzIC1XYWl0OyAKUmVtb3ZlLUl0ZW0gJFBhdGhcJEluc3RhbGxlcjs="}, 
+        "IoOptimized": "optimized",
+        "PrivateIpAddress": "192.168.0.1",
+        "VpcId": {
+          "Ref": "vpc"
+        },
+        "SecurityGroupId": {
+          "Ref": "sg"
+        },
+        "VSwitchId": {
+          "Ref": "vswitch"
+        },
+        "ImageId": {
+          "Ref": "ImageId"
+        },
+        "AllocatePublicIP": {"Ref": "PublicIP"},
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "SystemDiskCategory": "cloud_ssd",
+        "Password": {
+          "Ref": "LoginPassword"
+        }
+      }
+    },
+    "sg": {
+      "Type": "ALIYUN::ECS::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpc"
+        },
+        "SecurityGroupName": "ros_examples_windows2016_sg",
+        "SecurityGroupIngress": [
+          {
+            "PortRange": "3389/3389",
+            "Priority": 1,
+            "SourceCidrIp": "0.0.0.0/0",
+            "IpProtocol": "tcp",
+            "NicType": "intranet"
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "PortRange": "-1/-1",
+            "Priority": 1,
+            "IpProtocol": "all",
+            "DestCidrIp": "0.0.0.0/0",
+            "NicType": "intranet"
+          }
+        ]
+      }
+    },
+    "vpc": {
+      "Type": "ALIYUN::ECS::VPC",
+      "Properties": {
+        "CidrBlock": "192.168.0.0/16",
+        "VpcName": "ros_examples_windows2016_vpc"
+      }
+    }
+  },
+  "Outputs": {
+    "ecs_instance_id": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ecs",
+          "InstanceId"
+        ]
+      }
+    }
+  }
+}
